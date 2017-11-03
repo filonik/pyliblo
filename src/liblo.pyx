@@ -614,17 +614,26 @@ cdef class Server(_ServerBase):
 
         Exceptions: ServerError
         """
-        cdef char *cs
+        cdef char *_port = NULL
+        cdef char *_group = NULL
 
         if port is not None:
             p = _encode(str(port));
-            cs = p
-        else:
-            cs = NULL
+            _port = p
+
+        group = kwargs.get("group")
+        if group is not None:
+            g = _encode(str(group));
+            _group = g
 
         global __exception
         __exception = None
-        self._server = lo_server_new_with_proto(cs, proto, _err_handler)
+
+        if group is None:
+            self._server = lo_server_new_with_proto(_port, proto, _err_handler)
+        else:
+            self._server = lo_server_new_multicast(_group, _port, _err_handler)
+        
         if __exception:
             raise __exception
 
@@ -710,22 +719,31 @@ cdef class ServerThread(_ServerBase):
             if creating the server fails, e.g. because the given port could not
             be opened.
         """
-        cdef char *cs
+        cdef char *_port = NULL
 
         if port is not None:
             p = _encode(str(port));
-            cs = p
-        else:
-            cs = NULL
+            _port = p
+
+        group = kwargs.get("group")
+        if group is not None:
+            g = _encode(str(group));
+            _group = g
 
         # make sure python can handle threading
         PyEval_InitThreads()
 
         global __exception
         __exception = None
-        self._server_thread = lo_server_thread_new_with_proto(cs, proto, _err_handler)
+
+        if group is None:
+            self._server_thread = lo_server_thread_new_with_proto(_port, proto, _err_handler)
+        else:
+            self._server_thread = lo_server_thread_new_multicast(_group, _port, _err_handler)
+
         if __exception:
             raise __exception
+
         self._server = lo_server_thread_get_server(self._server_thread)
 
         _ServerBase.__init__(self, **kwargs)
@@ -842,6 +860,32 @@ cdef class Address:
     def get_protocol(self):
         return lo_address_get_protocol(self._address)
 
+    def get_iface(self):
+        cdef char *tmp = lo_address_get_iface(self._address)
+        cdef object r = tmp
+        free(tmp)
+        return _decode(r) 
+
+    def set_iface(self, iface, ip):
+        cdef char *_iface = NULL
+        cdef char *_ip = NULL
+
+        if iface is not None:
+            i1 = _encode(iface);
+            _iface = i1
+
+        if ip is not None:
+            i2 = _encode(ip);
+            _ip = i2
+
+        lo_address_set_iface(self._address, _iface, _ip)
+
+    def get_ttl(self):
+        return lo_address_get_ttl(self._address)
+
+    def set_ttl(self, value):
+        lo_address_set_ttl(self._address, value)
+
     property url:
         """
         The address's URL.
@@ -870,6 +914,22 @@ cdef class Address:
         """
         def __get__(self):
             return self.get_protocol()
+
+    property iface:
+        """
+        The address's assigned network interface.
+        """
+        def __get__(self):
+            return self.get_iface()
+
+    property ttl:
+        """
+        The address's time-to-live value.
+        """
+        def __get__(self):
+            return self.get_ttl()
+        def __set__(self, value):
+            self.set_ttl(value)
 
 
 ################################################################################

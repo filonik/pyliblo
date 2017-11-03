@@ -65,13 +65,22 @@ cdef extern from 'lo/lo.h':
     int lo_server_recv_noblock(lo_server s, int timeout) nogil
     int lo_server_get_socket_fd(lo_server s)
 
+    # server multicast
+    lo_server lo_server_new_multicast(char *group, char *port, lo_err_handler err_h)
+    lo_server lo_server_new_multicast_iface(char *group, char *port, char *iface, char *ip, lo_err_handler err_h)
+    
     # server thread
     lo_server_thread lo_server_thread_new_with_proto(char *port, int proto, lo_err_handler err_h)
     void lo_server_thread_free(lo_server_thread st)
-    lo_server lo_server_thread_get_server(lo_server_thread st)
     void lo_server_thread_start(lo_server_thread st)
     void lo_server_thread_stop(lo_server_thread st)
-
+    int lo_server_thread_get_port(lo_server_thread st)
+    char* lo_server_thread_get_url(lo_server_thread st)
+    lo_server lo_server_thread_get_server(lo_server_thread st)
+    
+    # server thread multicast
+    lo_server_thread lo_server_thread_new_multicast(char *group, char *port, lo_err_handler err_h)
+    
     # address
     lo_address lo_address_new(char *host, char *port)
     lo_address lo_address_new_with_proto(int proto, char *host, char *port)
@@ -81,6 +90,10 @@ cdef extern from 'lo/lo.h':
     char *lo_address_get_hostname(lo_address a)
     char *lo_address_get_port(lo_address a)
     int lo_address_get_protocol(lo_address a)
+    char *lo_address_get_iface(lo_address t)
+    int lo_address_set_iface(lo_address t, char *iface, char *ip)
+    int lo_address_get_ttl(lo_address a)
+    void lo_address_set_ttl(lo_address a, int ttl)
     const_char* lo_address_errstr(lo_address a)
 
     # message
